@@ -14,7 +14,7 @@ namespace IniFileParser
     {
         public List<Section> Sections { get; }
 
-        public  string Path { get; set; }
+        public string Path { get; set; }
 
         public IniFile(string filePath)
         {
@@ -35,12 +35,55 @@ namespace IniFileParser
 
         public void Parse()
         {
-            List<string> lines = File.ReadAllLines(Path).ToList();
+            List<string> lines = File.ReadAllLines(Path).Select(e => e.Trim()).ToList();
+            Section currentSection = null;
             foreach (var line in lines)
             {
+                if (string.IsNullOrEmpty(line)) continue;
+                if (IsComment(line)) continue;
+
+                else if (IsSection(line))
+                {
+                    if(FindOrCreate(line, out currentSection))
+                    {
+                        this.Sections.Add(currentSection);
+                    }
+                }
+                else
+                {
+                    currentSection.ParseLine(line);
+                }
+
+                if (currentSection == null)
+                {
+                    throw new ApplicationException("something is wrong");
+                }
 
             }
 
+        }
+
+        private bool IsComment(string line)
+        {
+            return line[0] == '#';
+        }
+
+        private bool IsSection(string line)
+        {
+            return line[0] == '[';
+        }
+
+        private bool FindOrCreate(string sectionName, out Section section)
+        {
+            sectionName = sectionName
+                .Substring(1, sectionName.EndsWith("]") ? sectionName.Length - 2 : sectionName.Length - 1);
+            section = this.Sections.FirstOrDefault(e => e.Name == sectionName.Trim());
+            if (section == null)
+            {
+                section = new Section(sectionName);
+                return true;
+            }
+            return false;
         }
     }
 
@@ -56,13 +99,21 @@ namespace IniFileParser
             KeyValuePairs = new Dictionary<string, List<string>>();
         }
 
+        public void ParseLine(string line)
+        {
+            var key = line.Substring(0, line.IndexOf('='));
+            var value = line.Substring(line.IndexOf('=') + 1);
+            var values = FindOrCreateKey(key);
+            values.Add(value);
+        }
+
         public override string ToString()
         {
             StringBuilder sb = new StringBuilder();
-            sb.AppendLine("Section Name:- "+Name);
+            sb.AppendLine("Section Name:- " + Name);
             foreach (var keyValuePair in KeyValuePairs)
             {
-                sb.Append(keyValuePair.Key+" = ");
+                sb.Append(keyValuePair.Key + " = ");
                 foreach (string s in keyValuePair.Value)
                 {
                     sb.Append(s + ",");
@@ -73,6 +124,21 @@ namespace IniFileParser
             }
 
             return sb.ToString().TrimEnd(',');
+        }
+
+        private List<string> FindOrCreateKey(string key)
+        {
+            key = key.Trim();
+            if (KeyValuePairs.ContainsKey(key))
+            {
+                return KeyValuePairs[key];
+            }
+            else
+            {
+                var keyValues = new List<string>();
+                KeyValuePairs.Add(key, keyValues);
+                return keyValues;
+            }
         }
     }
 }
