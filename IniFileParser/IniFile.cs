@@ -14,7 +14,7 @@ namespace IniFileParser
     {
         public List<Section> Sections { get; }
 
-        public  string Path { get; set; }
+        public string Path { get; set; }
 
         public IniFile(string filePath)
         {
@@ -35,11 +35,55 @@ namespace IniFileParser
 
         public void Parse()
         {
-            List<string> lines = File.ReadAllLines(Path).ToList();
-            foreach (var line in lines)
-            {
 
-            }
+            //List<string> lines = File.ReadAllLines(Path).ToList();
+            //foreach (var line in lines)
+            //{
+
+            //}
+
+            // Using ReadLines instead of ReadAllLines.
+
+            File.ReadLines(Path).ToList().ForEach(
+            line =>
+                {
+
+                    var firstChar = line.Trim().FirstOrDefault();
+                    switch (firstChar)
+                    {
+
+                        case '[':
+                            {
+                                Sections.Add(new Section(line.Trim().TrimStart('[').TrimEnd(']')));
+                                break;
+                            }
+                        case '#':
+                        case '\u0000':
+                            break;
+                        default:
+                            {
+                                var lastSection = Sections.LastOrDefault();
+                                var items = line.Split('=');
+                                var secName = items[0].Trim();
+                                for (int i = 1; i < items.Count(); i++)
+                                {
+                                    if (lastSection.KeyValuePairs.ContainsKey(secName))
+                                    {
+                                        lastSection.KeyValuePairs[secName].Add(items[i].Trim());
+                                    }
+                                    else
+                                    {
+                                        lastSection.KeyValuePairs.Add(secName, new List<string>() { items[i].Trim() });
+                                    }
+                                }
+
+                            }
+                            break;
+                    }
+
+                });
+
+            
 
         }
     }
@@ -59,10 +103,10 @@ namespace IniFileParser
         public override string ToString()
         {
             StringBuilder sb = new StringBuilder();
-            sb.AppendLine("Section Name:- "+Name);
+            sb.AppendLine("Section Name:- " + Name);
             foreach (var keyValuePair in KeyValuePairs)
             {
-                sb.Append(keyValuePair.Key+" = ");
+                sb.Append(keyValuePair.Key + " = ");
                 foreach (string s in keyValuePair.Value)
                 {
                     sb.Append(s + ",");
